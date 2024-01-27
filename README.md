@@ -43,6 +43,7 @@ python3 file_split.py
 
 export mybucket="wcddeb8-lab-airflow-yourname"
 aws s3 mb s3://$mybucket
+aws s3 mb s3://$mybucket-output
 
 chmod +x upload_raw_files.sh
 ./upload_raw_files.sh
