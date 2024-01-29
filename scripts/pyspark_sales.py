@@ -30,5 +30,5 @@ df_sum_sales_qty.show(2)
         .write
         .mode("overwrite")
         .option("compression","gzip")
-        .parquet(f"s3://wcddeb8-lab-airflow-output/sales/date={date_str}")
+        .parquet(f"s3://wcddeb8-lab-airflow/output/sales_date={date_str}")
 )
