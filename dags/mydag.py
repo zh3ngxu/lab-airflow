@@ -1,3 +1,10 @@
+"""
+sample DAG to create a workflow to:
+- ingest raw files from s3
+- process raw files using Spark in AWS EMR and output parquet files
+- load parquet files in Snowflake data warehouse
+"""
+
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.providers.amazon.aws.operators.s3 import S3ListOperator
@@ -5,6 +12,7 @@ from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.providers.amazon.aws.operators.emr import EmrAddStepsOperator,EmrCreateJobFlowOperator
 from airflow.providers.amazon.aws.sensors.emr import EmrStepSensor
+from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 
 def _branch_func(ti=None):
     """python branch operator function to pull xcom pushed by previous list_objects_task
@@ -31,6 +39,9 @@ default_args = {
     "end_date": datetime(2024, 1, 6),
     "email_on_failure": False,
     "email_on_retry": False,
+    "snowflake_conn_id": "snowflake_conn",
+    "database": "sales_db",
+    "schema": "sales_schema",
     # 'retries': 1,
     # 'retry_delay': timedelta(minutes=5),
 }
@@ -40,10 +51,12 @@ dag = DAG(
     "mydag",
     default_args=default_args,
     description="DAG to list objects in an S3 bucket",
+    template_searchpath="/opt/airflow/dags/dependencies/",
     catchup=True,
     schedule_interval="0 6 * * *",
 )
 
+dag.doc_md = __doc__
 
 s3_bucket = "wcddeb8-lab-airflow"
 
@@ -183,6 +196,11 @@ wait_for_step_job = EmrStepSensor(
     dag=dag,
 )
 
+load_snowflake = SnowflakeOperator(
+    task_id="load_snowflake",
+    sql="sf_load.sql",
+)
+
 (
     list_objects_task
     >> check_s3_file_exist
@@ -194,5 +212,6 @@ wait_for_step_job = EmrStepSensor(
     # >> create_emr_cluster
     >> add_step_job
     >> wait_for_step_job
+    >> load_snowflake
 )
 
