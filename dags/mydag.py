@@ -34,14 +34,13 @@ def _notify_vendor():
 
 default_args = {
     "owner": "data_engineer",
-    "depends_on_past": False,
+    "depends_on_past": True,
     "start_date": datetime(2024, 1, 5),
     "end_date": datetime(2024, 1, 6),
     "email_on_failure": False,
     "email_on_retry": False,
-    "snowflake_conn_id": "snowflake_conn",
-    "database": "sales_db",
-    "schema": "sales_schema",
+    "snowflake_conn_id": "snowflake_default",
+    "max_active_runs": 1,
     # 'retries': 1,
     # 'retry_delay': timedelta(minutes=5),
 }
@@ -198,6 +197,8 @@ wait_for_step_job = EmrStepSensor(
 
 load_snowflake = SnowflakeOperator(
     task_id="load_snowflake",
+    database="sales_db",
+    schema="sales_schema",
     sql="sf_load.sql",
 )
 
