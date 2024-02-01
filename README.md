@@ -36,6 +36,27 @@ docker-compose up
 
 If you would like to customize the Docker image, please modify the Dockerfile and uncomment line 53: `image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.1} # build: .` in docker-compose yaml file.
 
+Docker-compose yaml file explanation
+
+- `x-airflow-common`: 
+  - Defines common configurations for Airflow containers. 
+  - Configures environment variables such as executor, database connection, Celery broker and result backend, Fernet key, and more. 
+  - Sets up volumes for DAGs, logs, configuration, and plugins. 
+  - Defines the user and dependencies for services like Redis and PostgreSQL in separate containers.
+- `Airflow Initialization`:
+  - Inherits common configurations.
+  - Serves as the entry point for initializing Airflow.
+  - Checks system resources (memory, CPUs, disk space) and warns if insufficient.
+  - Creates necessary directories for logs, DAGs, and plugins.
+  - Executes the Airflow version command, initializes the database, and creates an admin user.
+- `postgres`: This service provides the backend database for Apache Airflow. It stores metadata related to DAGs (Directed Acyclic Graphs), task instances, connections, and more. The health check ensures that the PostgreSQL service is ready before other services start.
+- `Redis`: Redis is used as a message broker for Celery, which is the distributed task queue system employed by Apache Airflow. It helps in distributing tasks across multiple workers.
+- `Flower`: Flower is a real-time web-based monitor for Celery workers. It allows you to monitor the status and health of Celery workers. The service exposes port 5555 for accessing the Flower web UI.
+- `Airflow Webserver`: The Airflow webserver provides a web-based UI for managing and monitoring DAGs, tasks, and other Airflow components. It exposes port 8080, allowing users to interact with the Airflow UI through a web browser.
+- `Airflow Scheduler`:The scheduler is responsible for triggering task instances based on their dependencies and scheduling rules. It continuously monitors DAGs and schedules tasks to be executed by the workers.
+- `Airflow Worker`: The worker is responsible for executing the actual tasks defined in DAGs. In a CeleryExecutor setup, like this one, tasks are distributed to workers via Celery. Workers pull tasks from the message broker (Redis) and execute them.
+- `Airflow Triggerer`: The triggerer is responsible for triggering configured jobs, such as TriggererJobs. It periodically checks for jobs to trigger based on defined conditions.
+
 
 ## load files preparation
 The `sales.csv` has sample product sales dataset, use the `file_split.py` to create files containing sales events on each day. And create a S3 bucket to upload files to s3 bucket. This step is to mimic the sales data dropping from vendors, and the file existance will be validated in the first task of the workflow. Update the `s3_bucket` in the dag file as well.
@@ -106,4 +127,4 @@ Finally Start the dag by clicking on unpause toggle button and check the dag run
 
 Next steps:
 - Add a task to automate the EMR cluster creation using the [EmrCreateJobFlowOperator](https://airflow.apache.org/docs/apache-airflow-providers-amazon/stable/operators/emr/emr.html#create-an-emr-job-flow)
-- 
+- Automate the 2 Airflow Connection configuration using Airflow [Cli](https://airflow.apache.org/docs/apache-airflow/stable/howto/connection.html#creating-a-connection-from-the-cli)
