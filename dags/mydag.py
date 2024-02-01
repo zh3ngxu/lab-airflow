@@ -6,18 +6,23 @@ sample DAG to create a workflow to:
 """
 
 from datetime import datetime, timedelta
+
 from airflow import DAG
-from airflow.providers.amazon.aws.operators.s3 import S3ListOperator
-from airflow.operators.python import BranchPythonOperator, PythonOperator
 from airflow.operators.bash import BashOperator
-from airflow.providers.amazon.aws.operators.emr import EmrAddStepsOperator,EmrCreateJobFlowOperator
+from airflow.operators.python import BranchPythonOperator, PythonOperator
+from airflow.providers.amazon.aws.operators.emr import (
+    EmrAddStepsOperator,
+    EmrCreateJobFlowOperator,
+)
+from airflow.providers.amazon.aws.operators.s3 import S3ListOperator
 from airflow.providers.amazon.aws.sensors.emr import EmrStepSensor
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 
+
 def _branch_func(ti=None):
     """python branch operator function to pull xcom pushed by previous list_objects_task
-        to check list S3 bucket and validate if file exists, if file doesn't exist then 
-        return the task name notify vendor
+    to check list S3 bucket and validate if file exists, if file doesn't exist then
+    return the task name notify vendor
     """
     xcom_value = ti.xcom_pull(task_ids="list_objects_task")
     print(f"received xcom_value {xcom_value}")
@@ -59,38 +64,37 @@ dag.doc_md = __doc__
 
 s3_bucket = "wcddeb8-lab-airflow"
 
-CLUSTER_ID = "j-QNO2YACKJS77" # create a new EMR cluster in AWS management console or create w/ EmrCreateJobFlowOperator
+CLUSTER_ID = "j-QNO2YACKJS77"  # create a new EMR cluster in AWS management console or create w/ EmrCreateJobFlowOperator
 
 # this is just an example of how to use SPARK_STEPS, you need to define your own steps
 SPARK_STEPS = [
-   {
-       "Name": "sales_processing",
-       "ActionOnFailure": "CONTINUE",
-       "HadoopJarStep": {
-           "Jar": "command-runner.jar",
-           "Args": [
-               "/usr/bin/spark-submit",
-               "--master",
-               "yarn",
-            #    "--deploy-mode",
-            #    "cluster",
-            #    "--num-executors",
-            #    "2",
-            #    "--driver-memory",
-            #    "512m",
-            #    "--executor-memory",
-            #    "3g",
-            #    "--executor-cores",
-            #    "2",
-               "s3://wcddeb8-lab-airflow/pyspark_sales.py",
-               "{{  macros.ds_format(ds,'%Y-%m-%d','%Y%m%d')  }}",
-               f"s3://{s3_bucket}/"+"{{ macros.ds_format(ds, '%Y-%m-%d', '%Y/%m/%d') }}/"
-           ], 
-       },
-   }
+    {
+        "Name": "sales_processing",
+        "ActionOnFailure": "CONTINUE",
+        "HadoopJarStep": {
+            "Jar": "command-runner.jar",
+            "Args": [
+                "/usr/bin/spark-submit",
+                "--master",
+                "yarn",
+                #    "--deploy-mode",
+                #    "cluster",
+                #    "--num-executors",
+                #    "2",
+                #    "--driver-memory",
+                #    "512m",
+                #    "--executor-memory",
+                #    "3g",
+                #    "--executor-cores",
+                #    "2",
+                "s3://wcddeb8-lab-airflow/pyspark_sales.py",
+                "{{  macros.ds_format(ds,'%Y-%m-%d','%Y%m%d')  }}",
+                f"s3://{s3_bucket}/"
+                + "{{ macros.ds_format(ds, '%Y-%m-%d', '%Y/%m/%d') }}/",
+            ],
+        },
+    }
 ]
-
-
 
 
 list_objects_task = S3ListOperator(
@@ -102,22 +106,16 @@ list_objects_task = S3ListOperator(
     dag=dag,
 )
 
-check_s3_file_exist=BranchPythonOperator(
-    task_id="check_s3_file_exist",
-    python_callable=_branch_func,
-    dag=dag
+check_s3_file_exist = BranchPythonOperator(
+    task_id="check_s3_file_exist", python_callable=_branch_func, dag=dag
 )
 
 notify_vendor = PythonOperator(
-    task_id="notify_vendor",
-    python_callable=_notify_vendor,
-    dag=dag
+    task_id="notify_vendor", python_callable=_notify_vendor, dag=dag
 )
 
 emr_process_file = BashOperator(
-    task_id="emr_process_file",
-    bash_command="echo processing files",
-    dag=dag
+    task_id="emr_process_file", bash_command="echo processing files", dag=dag
 )
 
 # Create EMR Cluster use below template to create EMR
@@ -202,11 +200,7 @@ load_snowflake = SnowflakeOperator(
     sql="sf_load.sql",
 )
 
-(
-    list_objects_task
-    >> check_s3_file_exist
-    >> [notify_vendor,emr_process_file]
-)
+(list_objects_task >> check_s3_file_exist >> [notify_vendor, emr_process_file])
 
 (
     emr_process_file
@@ -215,4 +209,3 @@ load_snowflake = SnowflakeOperator(
     >> wait_for_step_job
     >> load_snowflake
 )
-
