@@ -34,11 +34,11 @@ docker-compose up airflow-init
 docker-compose up
 ```
 
-Use Dockerfile to install dependecy in a custom image, and comment out `image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.1} # build: .` in docker-compose yaml file.
+If you would like to customize the Docker image, please modify the Dockerfile and uncomment line 53: `image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.8.1} # build: .` in docker-compose yaml file.
 
 
 ## load files preparation
-The `sales.csv` has sample product sales dataset, use the `file_split.py` to create files containing sales events on each day. And create a S3 bucket to upload files to s3 bucket. This step is to mimic the vendor sales data sharing, and detecting and picking files for process will be the first step in the pipeline
+The `sales.csv` has sample product sales dataset, use the `file_split.py` to create files containing sales events on each day. And create a S3 bucket to upload files to s3 bucket. This step is to mimic the sales data dropping from vendors, and the file existance will be validated in the first task of the workflow. Update the `s3_bucket` in the dag file as well.
 
 ```bash
 cd sales_data/
@@ -47,7 +47,6 @@ python3 file_split.py
 
 export mybucket="wcddeb8-lab-airflow-yourname"
 aws s3 mb s3://$mybucket
-aws s3 mb s3://$mybucket-output
 
 chmod +x upload_raw_files.sh
 ./upload_raw_files.sh
@@ -85,7 +84,7 @@ Loads data into Snowflake using a SQL script (sf_load.sql) in the sales_db datab
 
 
 ## Set up EMR clister
-Create EMR cluster in AWS management console, the version could be `emr-6.15.0` with application `Hadoop Hive Spark`installed, make sure `EC2 instance profile` is attached with an IAM role that has `AmazonS3FullAccess` policy so that EMR cluster could read files from S3 bucket and write parquet files back to the bucket. Service role for Amazon EMR could be set to `EMR_DefaultRole`.
+Create EMR cluster in AWS management console, the version could be `emr-6.15.0` with application `Hadoop Hive Spark`installed, make sure `EC2 instance profile` is attached with an IAM role that has `AmazonS3FullAccess` policy so that EMR cluster could read files from S3 bucket and write parquet files back to the bucket. Service role for Amazon EMR could be set to `EMR_DefaultRole`. Wait for around 10 minutes and copy the cluster id and replace `CLUSTER_ID` in the dag file.
 
 ## Set up Snowflake
 Login to the Snowflake website, and create a new worksheet as the default `ACCOUNTADMIN` role and copy the `scripts/snowflake_init.sql` code in the worksheet and execute the query.
@@ -103,3 +102,8 @@ In Airflow web UI, click on `Admin/Connections` to set up two connections:
   - database: `sales_db`
   - role: `accountadmin`
 
+Finally Start the dag by clicking on unpause toggle button and check the dag run status.
+
+Next steps:
+- Add a task to automate the EMR cluster creation using the [EmrCreateJobFlowOperator](https://airflow.apache.org/docs/apache-airflow-providers-amazon/stable/operators/emr/emr.html#create-an-emr-job-flow)
+- 
