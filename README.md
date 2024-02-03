@@ -105,6 +105,8 @@ Loads data into Snowflake using a SQL script (sf_load.sql) in the sales_db datab
 
 
 ## Set up EMR clister
+If you created the cluster for the first time, please create service role in the AWS cloud shell `aws emr create-default-roles` which will create a `EMR_DefaultRole`, or you could create a service role in AWS IAM service([doc](https://docs.aws.amazon.com/emr/latest/ManagementGuide/emr-iam-role.html)) 
+
 Create EMR cluster in AWS management console, the version could be `emr-6.15.0` with application `Hadoop Hive Spark`installed, make sure `EC2 instance profile` is attached with an IAM role that has `AmazonS3FullAccess` policy so that EMR cluster could read files from S3 bucket and write parquet files back to the bucket. Service role for Amazon EMR could be set to `EMR_DefaultRole`. Wait for around 10 minutes and copy the cluster id and replace `CLUSTER_ID` in the dag file.
 
 ## Set up Snowflake
