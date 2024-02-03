@@ -1,1 +1,1 @@
-aws s3 cp process_sales.py s3://wcddeb8-lab-airflow
+aws s3 cp pyspark_sales.py s3://wcddeb8-lab-airflow

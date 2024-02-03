@@ -9,4 +9,4 @@ FROM
             current_date
         FROM
             @s3_stage_sales
-    ) Pattern = '.{{  macros.ds_format(ds,"%Y-%m-%d","%Y%m%d")  }}.*.gz.parquet' file_format = 'parquet_ff';
+    ) Pattern = '.*{{  macros.ds_format(ds,"%Y-%m-%d","%Y%m%d")  }}.*.gz.parquet' file_format = 'parquet_ff';
